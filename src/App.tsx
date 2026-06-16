@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Home from '@/pages/Home';
-import ProjectDetail from '@/pages/ProjectDetail';
-import About from '@/pages/About';
+import Gallery from '@/pages/Gallery';
+import Studio from '@/pages/Studio';
 import Contact from '@/pages/Contact';
 import NavBar from '@/components/layout/NavBar';
 import Footer from '@/components/layout/Footer';
@@ -33,11 +33,10 @@ export default function App() {
         <NavBar />
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/projects/:id" element={<ProjectDetail />} />
-          <Route path="/about" element={<About />} />
+          <Route path="/gallery" element={<Gallery />} />
+          <Route path="/studio" element={<Studio />} />
           <Route path="/contact" element={<Contact />} />
-          <Route
-            path="*" element={<Home />} />
+          <Route path="*" element={<Home />} />
         </Routes>
         <Footer />
       </div>
