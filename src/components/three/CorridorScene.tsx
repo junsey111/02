@@ -1,302 +1,177 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Text, Float, Sparkles } from '@react-three/drei';
-import { useThreeStore, RoomId } from './useThreeStore';
+import { useScroll } from '@react-three/drei';
 
-/* ============ 走廊地面与墙面 — 手工造一个长厅 ============ */
-function CorridorWalls() {
-  return (
-    <group>
-      {/* 地板 */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, 0, 0]}>
-        <planeGeometry args={[12, 80]} />
-        <meshStandardMaterial color="#141414" roughness={0.9} metalness={0.1} />
-      </mesh>
-      {/* 地板中央引导光带 */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <planeGeometry args={[0.6, 70]} />
-        <meshStandardMaterial
-          color="#c74c1c"
-          emissive="#c74c1c"
-          emissiveIntensity={1.2}
-        />
-      </mesh>
-      {/* 左墙 */}
-      <mesh position={[-6, 4, 0]} receiveShadow>
-        <boxGeometry args={[0.3, 8, 80]} />
-        <meshStandardMaterial color="#0f0f0f" roughness={1} />
-      </mesh>
-      {/* 右墙 */}
-      <mesh position={[6, 4, 0]} receiveShadow>
-        <boxGeometry args={[0.3, 8, 80]} />
-        <meshStandardMaterial color="#0f0f0f" roughness={1} />
-      </mesh>
-      {/* 天花 */}
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 8, 0]}>
-        <planeGeometry args={[12, 80]} />
-        <meshStandardMaterial color="#0a0a0a" roughness={1} />
-      </mesh>
-      {/* 尽头背景 */}
-      <mesh position={[0, 4, -40]}>
-        <boxGeometry args={[12, 8, 0.3]} />
-        <meshStandardMaterial color="#111" emissive="#1a0a00" emissiveIntensity={0.2} />
-      </mesh>
-      <mesh position={[0, 4, 40]}>
-        <boxGeometry args={[12, 8, 0.3]} />
-        <meshStandardMaterial color="#111" emissive="#0a1a12" emissiveIntensity={0.2} />
-      </mesh>
-    </group>
-  );
-}
+/**
+ * 第一人称 3D 走廊 —— itomdev 的 "The Corridor"
+ * - 一条长度 L 的走廊,两面墙、地板、天花板
+ * - 相机沿走廊的 Z 轴推进,由页面滚动控制
+ * - 左右墙上各若干扇门,hover 时发光
+ */
 
-/* 门:悬浮标签 + 可点击发光框 */
-function Door({
-  position,
-  rotation = [0, 0, 0],
-  room,
-  label,
-  index,
-}: {
-  position: [number, number, number];
-  rotation?: [number, number, number];
-  room: RoomId;
-  label: string;
-  index: number;
-}) {
-  const enter = useThreeStore((s) => s.enter);
-  const mesh = useRef<THREE.Mesh>(null);
-  const frame = useRef<THREE.Mesh>(null);
-  const [hover, setHover] = useState(false);
+const CORRIDOR_LENGTH = 80; // 走廊总长度(Z 方向)
+const CORRIDOR_WIDTH = 6; // 半宽
+const CORRIDOR_HEIGHT = 6;
 
-  useFrame((_, dt) => {
-    if (mesh.current) {
-      mesh.current.position.y = position[1] + Math.sin(Date.now() / 1000 + index) * 0.08;
-    }
-    if (frame.current) {
-      const mat = frame.current.material as THREE.MeshStandardMaterial;
-      const target = hover ? 3.5 : 1.2;
-      mat.emissiveIntensity += (target - mat.emissiveIntensity) * Math.min(dt * 4, 1);
-    }
-  });
-
-  return (
-    <group position={position} rotation={rotation as any}>
-      {/* 门框发光线 */}
-      <mesh
-        ref={frame}
-        position={[0, 0, 0.05]}
-        onPointerOver={() => setHover(true)}
-        onPointerOut={() => setHover(false)}
-        onClick={() => enter(room)}
-      >
-        <boxGeometry args={[3, 5, 0.1]} />
-        <meshStandardMaterial
-          color="#1a1a1a"
-          emissive={hover ? '#c74c1c' : '#1a4d3d'}
-          emissiveIntensity={1.2}
-        />
-      </mesh>
-      {/* 内部发光 */}
-      <mesh position={[0, 0, -0.05]}>
-        <planeGeometry args={[2.6, 4.6]} />
-        <meshBasicMaterial
-          color={hover ? '#f4efe6' : '#2a2a2a'}
-          transparent
-          opacity={hover ? 0.9 : 0.25}
-        />
-      </mesh>
-      {/* 标题 */}
-      <Float speed={1.2} rotationIntensity={0} floatIntensity={0.4}>
-        <Text
-          position={[0, 3.6, 0.3]}
-          fontSize={0.55}
-          color="#f4efe6"
-          font="https://fonts.gstatic.com/s/playfairdisplay/v37/nuFiD-vYSZviVYUb_rj3ij__anPXDTnCjmHKM4.woff2"
-        >
-          {label}
-        </Text>
-      </Float>
-      {/* 数字 */}
-      <Text
-        position={[0, -3.3, 0.3]}
-        fontSize={0.22}
-        color="#8e8a82"
-        letterSpacing={0.3}
-      >
-        0{index}
-      </Text>
-      {/* 点击提示 */}
-      <Text
-        position={[0, -3.9, 0.3]}
-        fontSize={0.16}
-        color={hover ? '#c74c1c' : '#8e8a82'}
-        letterSpacing={0.2}
-      >
-        {hover ? '← 进入 →' : 'click to enter'}
-      </Text>
-    </group>
-  );
-}
-
-/* 墙上装饰画(悬浮小方块) */
-function WallDecoration() {
-  return (
-    <group>
-      {[-20, -8, 8, 20].map((z, i) => (
-        <group key={i} position={[0, 0, z]}>
-          {/* 左墙装饰 */}
-          <mesh position={[-5.7, 4.5, 0]}>
-            <boxGeometry args={[0.1, 1.4, 1.4]} />
-            <meshStandardMaterial
-              color={i % 2 === 0 ? '#c74c1c' : '#1f3a2e'}
-              emissive={i % 2 === 0 ? '#4a1a00' : '#0a1a12'}
-              emissiveIntensity={0.6}
-            />
-          </mesh>
-          {/* 右墙装饰 */}
-          <mesh position={[5.7, 4.5, 0]}>
-            <boxGeometry args={[0.1, 1.4, 1.4]} />
-            <meshStandardMaterial
-              color={i % 2 === 0 ? '#1f3a2e' : '#c74c1c'}
-              emissive={i % 2 === 0 ? '#0a1a12' : '#4a1a00'}
-              emissiveIntensity={0.6}
-            />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  );
-}
-
-/* 顶光 — 每隔一段给个下垂的灯 */
-function CeilingLights() {
-  return (
-    <group>
-      {[-30, -15, 0, 15, 30].map((z, i) => (
-        <group key={i} position={[0, 7.6, z]}>
-          <mesh>
-            <cylinderGeometry args={[0.08, 0.08, 0.6, 12]} />
-            <meshStandardMaterial color="#2a2a2a" />
-          </mesh>
-          <mesh position={[0, -0.45, 0]}>
-            <cylinderGeometry args={[0.3, 0.15, 0.4, 16]} />
-            <meshStandardMaterial
-              color="#f4efe6"
-              emissive="#f4efe6"
-              emissiveIntensity={1.6}
-            />
-          </mesh>
-          <pointLight
-            position={[0, -0.7, 0]}
-            color="#f4d48a"
-            intensity={2.4}
-            distance={14}
-            decay={2}
-          />
-        </group>
-      ))}
-    </group>
-  );
-}
-
-/* 相机控制 — 通过鼠标位置做缓慢环视 + 随时间缓慢前进 */
-function CameraRig() {
+export function CorridorScene() {
   const { camera } = useThree();
-  const mouseRef = useRef({ x: 0, y: 0 });
-  const target = useRef(new THREE.Vector3(0, 3.5, 5));
+  const scroll = useScroll();
+  const target = useRef(new THREE.Vector3(0, 2, 0));
+  const mouse = useRef({ x: 0, y: 0 });
 
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      mouseRef.current.x = (e.clientX / window.innerWidth - 0.5) * 2;
-      mouseRef.current.y = (e.clientY / window.innerHeight - 0.5) * 2;
-    };
-    window.addEventListener('mousemove', onMove);
-    return () => window.removeEventListener('mousemove', onMove);
-  }, []);
+  // 鼠标微扰
+  if (typeof window !== 'undefined') {
+    // 只绑一次 —— 用全局事件委托(在外面已经绑了也行)
+  }
+
+  // 把鼠标的移动累积下来(用全局事件)
+  if (typeof window !== 'undefined') {
+    // @ts-ignore
+    window.__itomMouse = window.__itomMouse || { x: 0, y: 0 };
+  }
 
   useFrame((_, dt) => {
-    const now = Date.now() / 1000;
-    // 相机在走廊间缓慢前后漂
-    const baseZ = 6 + Math.sin(now * 0.15) * 2.5;
-    const baseX = mouseRef.current.x * 0.8;
-    const baseY = 3.5 + mouseRef.current.y * 0.3;
+    // 读取全局鼠标
+    // @ts-ignore
+    const m = window.__itomMouse || { x: 0, y: 0 };
+    mouse.current.x += (m.x - mouse.current.x) * Math.min(dt * 2, 1);
+    mouse.current.y += (m.y - mouse.current.y) * Math.min(dt * 2, 1);
 
-    camera.position.x += (baseX - camera.position.x) * Math.min(dt * 1.2, 1);
-    camera.position.y += (baseY - camera.position.y) * Math.min(dt * 1.2, 1);
-    camera.position.z += (baseZ - camera.position.z) * Math.min(dt * 1.2, 1);
+    // 滚动 → Z 位置(从 -5 推到 -CORRIDOR_LENGTH+10)
+    const scrollOffset = scroll.offset;
+    const zTarget = -5 - scrollOffset * (CORRIDOR_LENGTH - 10);
 
-    target.current.set(
-      -mouseRef.current.x * 1.2,
-      3.5 - mouseRef.current.y * 0.3,
-      -10 + Math.sin(now * 0.1) * 0.8
-    );
+    // 相机位置:加入鼠标的轻微晃动
+    const camX = mouse.current.x * 0.8;
+    const camY = 2.0 + mouse.current.y * 0.3;
+    camera.position.x += (camX - camera.position.x) * Math.min(dt * 2, 1);
+    camera.position.y += (camY - camera.position.y) * Math.min(dt * 2, 1);
+    camera.position.z += (zTarget - camera.position.z) * Math.min(dt * 3, 1);
+
+    // 看向走廊的前方,但加一点鼠标控制的 lookAt 偏移
+    target.current.set(mouse.current.x * 1.2, 2.0 + mouse.current.y * 0.4, camera.position.z - 8);
     camera.lookAt(target.current);
   });
-  return null;
-}
 
-export default function CorridorScene() {
   return (
     <group>
-      <CameraRig />
+      {/* 地板 —— 一张大平面,略带纹理感 */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -CORRIDOR_LENGTH / 2]} receiveShadow>
+        <planeGeometry args={[CORRIDOR_WIDTH * 2, CORRIDOR_LENGTH + 20]} />
+        <meshStandardMaterial color="#0c0c0f" roughness={0.85} metalness={0.15} />
+      </mesh>
 
-      {/* 环境与主光 */}
-      <ambientLight intensity={0.15} color="#6e6e8e" />
-      <hemisphereLight args={['#2a1a1a', '#0a0a0f', 0.3]} />
+      {/* 地板上的「引导光带」—— 每隔一段给一条横条,增强纵深 */}
+      {Array.from({ length: 16 }).map((_, i) => (
+        <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, -i * 5 - 3]}>
+          <planeGeometry args={[CORRIDOR_WIDTH * 2, 0.08]} />
+          <meshBasicMaterial color="#c74c1c" transparent opacity={0.18} />
+        </mesh>
+      ))}
 
-      {/* 场景 */}
-      <CorridorWalls />
-      <CeilingLights />
-      <WallDecoration />
+      {/* 左墙 */}
+      <mesh position={[-CORRIDOR_WIDTH, CORRIDOR_HEIGHT / 2, -CORRIDOR_LENGTH / 2]} receiveShadow>
+        <boxGeometry args={[0.2, CORRIDOR_HEIGHT, CORRIDOR_LENGTH + 20]} />
+        <meshStandardMaterial color="#131317" roughness={0.9} />
+      </mesh>
 
-      {/* 三扇门: 左/右/ 远端 */}
-      <Door position={[-5.7, 3.5, -8]} rotation={[0, Math.PI / 2, 0]} room="gallery" label="Gallery · 作品" index={1} />
-      <Door position={[5.7, 3.5, -18]} rotation={[0, -Math.PI / 2, 0]} room="studio" label="Studio · 关于" index={2} />
-      <Door position={[0, 3.5, -28]} rotation={[0, 0, 0]} room="contact" label="Contact · 联系" index={3} />
+      {/* 右墙 */}
+      <mesh position={[CORRIDOR_WIDTH, CORRIDOR_HEIGHT / 2, -CORRIDOR_LENGTH / 2]} receiveShadow>
+        <boxGeometry args={[0.2, CORRIDOR_HEIGHT, CORRIDOR_LENGTH + 20]} />
+        <meshStandardMaterial color="#131317" roughness={0.9} />
+      </mesh>
 
-      {/* 灰尘/粒子 */}
-      <Sparkles
-        count={120}
-        scale={[20, 10, 60]}
-        size={4}
-        speed={0.3}
-        color="#f4efe6"
-        opacity={0.25}
-      />
+      {/* 天花板 */}
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, CORRIDOR_HEIGHT, -CORRIDOR_LENGTH / 2]}>
+        <planeGeometry args={[CORRIDOR_WIDTH * 2, CORRIDOR_LENGTH + 20]} />
+        <meshStandardMaterial color="#0a0a0d" roughness={1} />
+      </mesh>
 
-      {/* 大字 — 悬浮在空中 */}
-      <Float speed={0.4} rotationIntensity={0.1} floatIntensity={0.6}>
-        <Text
-          position={[0, 6.5, -38]}
-          fontSize={2.2}
-          color="#f4efe6"
-          font="https://fonts.gstatic.com/s/playfairdisplay/v37/nuFiD-vYSZviVYUb_rj3ij__anPXDTnCjmHKM4.woff2"
-          letterSpacing={-0.04}
-        >
-          JUNXI
-        </Text>
-        <Text
-          position={[0, 4.6, -38]}
-          fontSize={0.5}
-          color="#c74c1c"
-          letterSpacing={0.3}
-        >
-          DESIGNER · 2025
-        </Text>
-      </Float>
+      {/* 顶棚的一排灯 —— 暖色小圆盘 */}
+      {Array.from({ length: 12 }).map((_, i) => (
+        <group key={`lamp-${i}`} position={[0, CORRIDOR_HEIGHT - 0.1, -i * 7 - 3]}>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.25, 24]} />
+            <meshBasicMaterial color="#f4efe6" transparent opacity={0.85} />
+          </mesh>
+          <pointLight color="#f4d48a" intensity={1.4} distance={10} decay={2} position={[0, -0.1, 0]} />
+        </group>
+      ))}
 
-      {/* 入口欢迎词 */}
-      <Float speed={0.5} rotationIntensity={0} floatIntensity={0.3}>
-        <Text
-          position={[0, 6.2, 15]}
-          fontSize={0.8}
-          color="#8e8a82"
-          font="https://fonts.gstatic.com/s/playfairdisplay/v37/nuFiD-vYSZviVYUb_rj3ij__anPXDTnCjmHKM4.woff2"
-        >
-          a quiet place for design
-        </Text>
-      </Float>
+      {/* 走廊尽头的门 —— 发橙色微光 */}
+      <mesh position={[0, 3, -CORRIDOR_LENGTH + 2]}>
+        <boxGeometry args={[3, 5, 0.1]} />
+        <meshStandardMaterial color="#2a1a10" emissive="#c74c1c" emissiveIntensity={0.7} />
+      </mesh>
+      <mesh position={[0, 3, -CORRIDOR_LENGTH + 2.02]}>
+        <planeGeometry args={[2.6, 4.6]} />
+        <meshBasicMaterial color="#1a0e06" transparent opacity={0.9} />
+      </mesh>
+
+      {/* 入口 —— 背后开一个大方框,给玩家一点"进入"的感觉 */}
+      <mesh position={[0, 3, 8]}>
+        <boxGeometry args={[CORRIDOR_WIDTH * 1.8, CORRIDOR_HEIGHT + 2, 0.1]} />
+        <meshStandardMaterial color="#f4efe6" emissive="#f4efe6" emissiveIntensity={0.15} />
+      </mesh>
+
+      {/* 左墙 3 扇门:Gallery / Studio / 空  */}
+      {/* 我们用 CanvasTexture 让门上带文字,但为了简洁先用发光框,文字交给 DOM overlay */}
+      <DoorGlow position={[-CORRIDOR_WIDTH + 0.05, 2.5, -10]} color="#c74c1c" />
+      <DoorGlow position={[-CORRIDOR_WIDTH + 0.05, 2.5, -25]} color="#c74c1c" />
+      <DoorGlow position={[-CORRIDOR_WIDTH + 0.05, 2.5, -40]} color="#c74c1c" />
+
+      {/* 右墙也有 3 扇  */}
+      <DoorGlow position={[CORRIDOR_WIDTH - 0.05, 2.5, -15]} color="#f4efe6" flip />
+      <DoorGlow position={[CORRIDOR_WIDTH - 0.05, 2.5, -30]} color="#f4efe6" flip />
+      <DoorGlow position={[CORRIDOR_WIDTH - 0.05, 2.5, -45]} color="#f4efe6" flip />
+
+      {/* 远处一层雾 */}
+      <fog attach="fog" args={['#0c0c0f', 6, 35]} />
+
+      {/* 环境光 */}
+      <ambientLight intensity={0.35} />
+      <directionalLight position={[0, 10, 0]} intensity={0.2} color="#f4efe6" />
     </group>
   );
 }
+
+/* 一扇发光的门 —— 3D 的一个发光平面,文字由 DOM 覆盖 */
+function DoorGlow({
+  position,
+  color,
+  flip = false,
+}: {
+  position: [number, number, number];
+  color: string;
+  flip?: boolean;
+}) {
+  return (
+    <group position={position} rotation={[0, flip ? Math.PI : 0, 0]}>
+      {/* 门框 */}
+      <mesh>
+        <boxGeometry args={[1.8, 3.2, 0.05]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.35} />
+      </mesh>
+      {/* 门内暗一点 */}
+      <mesh position={[0, 0, 0.06]}>
+        <planeGeometry args={[1.6, 3]} />
+        <meshBasicMaterial color="#0a0a0d" />
+      </mesh>
+      {/* 细边框 */}
+      <mesh position={[0, 0, 0.08]}>
+        <ringGeometry args={[0.85, 0.9, 4, 1, 0, Math.PI * 2]} />
+        <meshBasicMaterial color={color} transparent opacity={0.4} side={THREE.DoubleSide} />
+      </mesh>
+      {/* 门框发光 —— 用一个轻光点 */}
+      <pointLight color={color} intensity={1.2} distance={4} position={[0, 0, 0.5]} />
+    </group>
+  );
+}
+
+/* 小工具:用来把 DOM 的大标题与走廊门对齐时,用它算每扇门的世界位置 */
+export const DOORS = [
+  { id: 'gallery', label: 'Gallery · 作品厅', pos: [-6.05, 2.5, -10] as [number, number, number] },
+  { id: 'studio', label: 'Studio · 工作室', pos: [-6.05, 2.5, -25] as [number, number, number] },
+  { id: 'contact', label: 'Contact · 联系', pos: [-6.05, 2.5, -40] as [number, number, number] },
+];
