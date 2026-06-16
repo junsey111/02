@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>铜钱问卦</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- 全局背景氛围 -->
+  <div class="atmosphere" aria-hidden="true">
+    <div class="atmo-rings"></div>
+    <div class="atmo-glow"></div>
+    <div class="atmo-texture"></div>
+  </div>
+
+  <!-- ============ 封面页 ============ -->
+  <section id="cover" class="view view--cover is-active">
+    <div class="cover-inner">
+      <!-- 顶部小标识 -->
+      <div class="cover-seal" aria-hidden="true">
+        <svg viewBox="0 0 60 60" width="28" height="28">
+          <circle cx="30" cy="30" r="28" fill="none" stroke="#4a3b2e" stroke-width="0.8" opacity="0.55"/>
+          <text x="30" y="38" text-anchor="middle" font-family="Songti SC, STSong, serif" font-size="24" fill="#4a3b2e" opacity="0.7">易</text>
+        </svg>
+      </div>
+
+      <!-- 主视觉：三枚铜钱 -->
+      <div class="cover-coins">
+        <div class="cover-coin cover-coin--1"></div>
+        <div class="cover-coin cover-coin--2"></div>
+        <div class="cover-coin cover-coin--3"></div>
+      </div>
+
+      <!-- 标题 -->
+      <h1 class="cover-title">铜钱问卦</h1>
+      <p class="cover-subtitle">心中有一问，三钱取一象</p>
+
+      <!-- 输入区 -->
+      <div class="cover-input-wrap">
+        <label class="cover-input-label" for="questionInput">所问之事</label>
+        <textarea
+          id="questionInput"
+          class="cover-input"
+          rows="2"
+          placeholder="写下你想问的事，例如：我最近适合换工作吗？"
+        ></textarea>
+      </div>
+
+      <!-- 主按钮 -->
+      <button id="startBtn" class="btn-primary">开始问卦</button>
+
+      <!-- 底部声明 -->
+      <p class="cover-footnote">本体验基于传统铜钱起卦规则，仅供文化体验与自我反思。</p>
+    </div>
+  </section>
+
+  <!-- ============ 投币舞台 ============ -->
+  <section id="tossStage" class="view view--toss">
+    <!-- 顶部栏 -->
+    <header class="toss-topbar">
+      <button id="backToCoverBtn" class="toss-link toss-link--left" aria-label="返回封面">← 返回</button>
+      <div class="toss-progress">
+        <span id="yaoIndex">第 一 爻</span>
+        <span class="toss-progress-sep">·</span>
+        <span>共 六 爻</span>
+      </div>
+      <div class="toss-status toss-link--right">
+        <span id="tossStatusText">静候投币</span>
+      </div>
+    </header>
+
+    <!-- 中央舞台 -->
+    <div class="toss-stage" id="tossStageArea">
+      <!-- 舞台背景氛围 -->
+      <div class="stage-atmo" aria-hidden="true">
+        <div class="stage-oval"></div>
+        <div class="stage-bagua"></div>
+      </div>
+
+      <!-- 三枚铜钱（主视觉） -->
+      <div class="coin-row" id="coinRow">
+        <div class="coin coin--0" data-coin="0"></div>
+        <div class="coin coin--1" data-coin="1"></div>
+        <div class="coin coin--2" data-coin="2"></div>
+      </div>
+
+      <!-- 当前爻结果提示（临时轻量） -->
+      <div class="current-yao-result" id="currentYaoResult" aria-live="polite"></div>
+
+      <!-- 角落摄像头状态预览（默认隐藏） -->
+      <div class="gesture-preview" id="gesturePreview" aria-hidden="true">
+        <video id="gestureVideo" autoplay muted playsinline></video>
+        <div class="gesture-preview-status" id="gesturePreviewStatus">未检测到手掌</div>
+      </div>
+    </div>
+
+    <!-- 底部操作栏 -->
+    <footer class="toss-bottombar">
+      <p class="toss-hint" id="tossHint">点击下方按钮，或在屏幕上向上滑动以投币</p>
+      <div class="toss-actions">
+        <button id="tossBtn" class="btn-primary btn-primary--sm">点击投币</button>
+        <button id="gestureBtn" class="btn-ghost">开启手势</button>
+        <button id="bottomBackBtn" class="btn-ghost btn-ghost--plain">返回封面</button>
+      </div>
+    </footer>
+  </section>
+
+  <!-- ============ 手势引导弹层 ============ -->
+  <div id="gestureGuideOverlay" class="overlay overlay--guide" aria-hidden="true">
+    <div class="overlay-panel">
+      <h3 class="overlay-title">手势投币</h3>
+      <ul class="overlay-list">
+        <li>请允许摄像头权限。</li>
+        <li>将手掌放入画面中。</li>
+        <li>手掌向上轻挥，像把铜钱抛出一样。</li>
+        <li>每次有效挥动会生成一爻，共需六次。</li>
+      </ul>
+      <button id="guideConfirmBtn" class="btn-primary btn-primary--sm">我知道了，开启摄像头</button>
+    </div>
+  </div>
+
+  <!-- ============ 结果弹层 ============ -->
+  <div id="resultOverlay" class="overlay overlay--result" aria-hidden="true">
+    <div class="result-panel">
+      <!-- 用户问题 -->
+      <div class="result-section result-section--question">
+        <p class="result-label">所问之事</p>
+        <p class="result-question" id="resultQuestion">——</p>
+      </div>
+
+      <!-- 六爻图 + 本卦/变卦 -->
+      <div class="result-gua-area">
+        <div class="gua-block">
+          <p class="result-label result-label--center">本卦</p>
+          <p class="gua-name" id="benGuaName">——</p>
+          <div class="gua-visual" id="benGuaVisual"></div>
+        </div>
+        <div class="gua-block">
+          <p class="result-label result-label--center">变卦</p>
+          <p class="gua-name" id="bianGuaName">——</p>
+          <div class="gua-visual" id="bianGuaVisual"></div>
+        </div>
+      </div>
+
+      <!-- 动爻 -->
+      <div class="result-section">
+        <p class="result-label">动爻</p>
+        <p class="result-text" id="dongYaoText">——</p>
+      </div>
+
+      <!-- 六爻明细 -->
+      <div class="result-section">
+        <p class="result-label">六爻明细</p>
+        <div class="yao-detail" id="yaoDetail"></div>
+      </div>
+
+      <!-- 一句话解读 -->
+      <div class="result-section result-section--quote">
+        <p class="result-label">静思之语</p>
+        <p class="result-quote" id="resultQuote">——</p>
+      </div>
+
+      <!-- 三条行动建议 -->
+      <div class="result-section">
+        <p class="result-label">行动建议</p>
+        <ol class="result-advice" id="resultAdvice"></ol>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="result-actions">
+        <button id="retryBtn" class="btn-primary btn-primary--sm">重新起卦</button>
+        <button id="shareCardBtn" class="btn-ghost">生成分享卡片</button>
+        <button id="resultBackBtn" class="btn-ghost btn-ghost--plain">返回封面</button>
+      </div>
+
+      <!-- 分享卡片预览容器 -->
+      <div id="shareCardPreview" class="share-card-preview" hidden>
+        <div class="share-card" id="shareCard">
+          <div class="share-card-header">
+            <span class="share-card-seal">易</span>
+            <span class="share-card-title">铜钱问卦</span>
+          </div>
+          <div class="share-card-question" id="shareQuestion"></div>
+          <div class="share-card-guas">
+            <div class="share-card-gua">
+              <p class="share-card-label">本卦</p>
+              <p class="share-card-gua-name" id="shareBenGua"></p>
+            </div>
+            <div class="share-card-gua">
+              <p class="share-card-label">变卦</p>
+              <p class="share-card-gua-name" id="shareBianGua"></p>
+            </div>
+          </div>
+          <p class="share-card-quote" id="shareQuote"></p>
+          <p class="share-card-foot">本体验仅供文化体验与自我反思</p>
+        </div>
+        <p class="share-card-tip">（预览示意，可自行截图保存）</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
