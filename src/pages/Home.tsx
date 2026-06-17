@@ -1,30 +1,21 @@
-import { useEffect, useRef, Component, ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { ScrollControls, useScroll } from '@react-three/drei';
 import { Link } from 'react-router-dom';
 
-/* WebGL 错误边界 —— WebGL 不可用时优雅降级 */
-class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false };
-  }
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#0c0c12]">
-          <div className="text-center text-[#f4efe6]/40">
-            <p className="font-serif text-2xl">3D Corridor</p>
-            <p className="mt-2 text-sm">Open in a real browser for the full experience →</p>
-          </div>
-        </div>
-      );
+/* WebGL 检测 + 优雅降级 */
+function useHasWebGL() {
+  const [has, set] = (0, useState)(true);
+  (0, useEffect)(() => {
+    try {
+      const c = document.createElement('canvas');
+      const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+      if (!gl) set(false);
+    } catch {
+      set(false);
     }
-    return this.props.children;
-  }
+  }, []);
+  return has;
 }
 
 /* ============================================================
