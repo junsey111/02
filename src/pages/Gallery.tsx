@@ -1,228 +1,212 @@
-import { Canvas } from '@react-three/fiber';
 import { Link } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
-import { BigFloatShape, BackgroundDebris } from '../components/three/SceneShell';
 
-/* ========= 单个项目 —— 一张会动的海报 ========= */
-function ProjectCard({
-  index,
-  title,
-  subtitle,
-  year,
-  category,
-  color,
-}: {
-  index: number;
-  title: string;
-  subtitle: string;
-  year: string;
-  category: string;
-  color: string;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    let raf = 0;
-    let t = Math.random() * 10;
-
-    const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    const draw = () => {
-      t += 0.008;
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.fillStyle = '#0a0a0a';
-      ctx.fillRect(0, 0, w, h);
-
-      // 辐射渐变
-      const cx = w / 2 + Math.sin(t * 1.3) * w * 0.08;
-      const cy = h / 2 + Math.cos(t * 0.9) * h * 0.08;
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.65);
-      grad.addColorStop(0, color);
-      grad.addColorStop(0.35, color + '55');
-      grad.addColorStop(1, '#000');
-      ctx.globalAlpha = 0.6;
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
-      ctx.globalAlpha = 1;
-
-      // 一组旋转矩形
-      for (let i = 0; i < 5; i++) {
-        const rot = t * (i % 2 === 0 ? 1 : -1) + i;
-        const size = (i + 1) * 70 * dpr;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(rot);
-        ctx.strokeStyle = i === 2 ? '#f4efe6' : color;
-        ctx.lineWidth = 1.2 * dpr;
-        ctx.globalAlpha = 0.25 + i * 0.12;
-        ctx.strokeRect(-size / 2, -size / 2, size, size);
-        ctx.restore();
-      }
-      // 中心圆
-      ctx.beginPath();
-      ctx.arc(cx, cy, 20 * dpr, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.globalAlpha = 0.9;
-      ctx.fill();
-      ctx.globalAlpha = 1;
-
-      // 噪点
-      const img = ctx.getImageData(0, 0, w, h);
-      for (let i = 0; i < img.data.length; i += 4) {
-        const n = (Math.random() - 0.5) * 28;
-        img.data[i] = Math.max(0, Math.min(255, img.data[i] + n));
-        img.data[i + 1] = Math.max(0, Math.min(255, img.data[i + 1] + n));
-        img.data[i + 2] = Math.max(0, Math.min(255, img.data[i + 2] + n));
-      }
-      ctx.putImageData(img, 0, 0);
-      raf = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', resize);
-    };
-  }, [color]);
-
-  return (
-    <div
-      data-cursor-hover
-      className="group relative block aspect-[4/5] overflow-hidden rounded-sm border border-line bg-transparent transition-all hover:border-bone"
-    >
-      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-      <div className="relative z-10 flex h-full flex-col justify-between p-6 md:p-8">
-        <div className="flex items-start justify-between text-[11px] uppercase tracking-[0.3em] text-bone/70">
-          <span>{String(index).padStart(2, '0')} / {category}</span>
-          <span>{year}</span>
-        </div>
-
-        <div>
-          <p className="font-serif text-4xl text-bone md:text-5xl">{title}</p>
-          <p className="mt-3 text-sm text-bone/60">{subtitle}</p>
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-bone/50">View project</span>
-          <span className="text-ember transition-transform group-hover:translate-x-2">→</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ============= 项目列表 ============= */
-const projects = [
-  { title: 'Quiet Forest', subtitle: '独立出版 · 品牌 & 版式', year: '2025', category: 'Editorial', color: '#c74c1c' },
-  { title: 'Noema Parfum', subtitle: '概念香氛 · 包装系统', year: '2024', category: 'Packaging', color: '#1f3a2e' },
-  { title: 'Atlas Studio', subtitle: '建筑工作室 · 网站', year: '2024', category: 'Web', color: '#c74c1c' },
-  { title: 'Echoes', subtitle: '插画系列 · 自发起', year: '2023', category: 'Illustration', color: '#1f3a2e' },
-  { title: 'Soft Room', subtitle: '展览视觉 · 导视', year: '2023', category: 'Exhibition', color: '#f4efe6' },
-  { title: 'Nocturne', subtitle: '演出海报 · 系列', year: '2022', category: 'Poster', color: '#c74c1c' },
+/* ============================================================
+   Gallery — itomdev 风格的完整作品集页面
+   ============================================================ */
+const PROJECTS = [
+  {
+    id: 'quiet-forest',
+    title: 'Quiet Forest',
+    year: '2025',
+    category: 'Editorial',
+    color: '#1f3a2e',
+    description:
+      `一本独立出版物,探索森林与城市之间沉默的对话。版式参考 1960 年代的瑞士排版,
+      每一页都是可独立存在的平面设计作品。`,
+    tags: ['Editorial', 'Book Design', 'Typography'],
+    long: true,
+  },
+  {
+    id: 'noema-parfum',
+    title: 'Noema Parfum',
+    year: '2024',
+    category: 'Packaging',
+    color: '#c74c1c',
+    description:
+      `一个概念香氛品牌的完整视觉系统。从品牌命名、视觉语言到包装结构,
+      再到每一瓶的瓶身与标签,全部手绘草图再落地执行。`,
+    tags: ['Brand', 'Packaging', 'Illustration'],
+    long: true,
+  },
+  {
+    id: 'atlas-studio',
+    title: 'Atlas Studio',
+    year: '2024',
+    category: 'Web Design',
+    color: '#0d0d14',
+    description:
+      `一家建筑工作室的品牌网站。极简黑白基调,大量留白,
+      用 CSS Grid 与排版的节奏感代替图片说故事。`,
+    tags: ['Web Design', 'Brand', 'CSS'],
+    long: true,
+  },
+  {
+    id: 'echoes',
+    title: 'Echoes',
+    year: '2023',
+    category: 'Illustration',
+    color: '#1f3a2e',
+    description:
+      `一组自发起的小幅插画,画的是声音在空间里的形状。
+      12 张,用木刻版画的方式画在铜版纸上,然后扫描进电脑调整。`,
+    tags: ['Illustration', 'Print', 'Self-initiated'],
+    long: false,
+  },
+  {
+    id: 'soft-room',
+    title: 'Soft Room',
+    year: '2023',
+    category: 'Exhibition',
+    color: '#c74c1c',
+    description:
+      `一个声音装置展览的视觉与导视系统。海报、导览手册、场地导视,
+      全部围绕"柔软"与"声音"两个关键词展开。`,
+    tags: ['Exhibition', 'Wayfinding', 'Poster'],
+    long: false,
+  },
+  {
+    id: 'nocturne',
+    title: 'Nocturne',
+    year: '2022',
+    category: 'Poster Series',
+    color: '#0d0d14',
+    description:
+      `一套 12 张的演出海报,每张对应一场夜间音乐会。
+      深夜的天空色、极简的字体、每张一个中心图形。`,
+    tags: ['Poster', 'Print', 'Series'],
+    long: false,
+  },
 ];
 
-/* ============= 页面 ============= */
 export default function Gallery() {
-  const [, forceRerender] = useState(0);
-  useEffect(() => {
-    // 小 hack:确保 Canvas 正常挂载后再绘制一次
-    const id = window.setTimeout(() => forceRerender((n) => n + 1), 80);
-    return () => window.clearTimeout(id);
-  }, []);
+  const long = PROJECTS.filter((p) => p.long);
+  const short = PROJECTS.filter((p) => !p.long);
 
   return (
-    <div className="relative min-h-screen bg-ink text-bone">
-      {/* 顶部 3D 大标题 */}
-      <div className="pointer-events-none relative h-[80vh] w-full overflow-hidden">
-        <Canvas
-          camera={{ position: [0, 0.5, 8], fov: 45 }}
-          dpr={[1, 2]}
-          gl={{ antialias: true }}
-        >
-          <color attach="background" args={['#0a0a0a']} />
-          <fog attach="fog" args={['#0a0a0a', 6, 22]} />
-          <ambientLight intensity={0.4} />
-          <directionalLight position={[5, 5, 5]} intensity={0.8} color="#f4efe6" />
-          <directionalLight position={[-5, 2, -5]} intensity={0.5} color="#c74c1c" />
-          <BackgroundDebris color="#c74c1c" />
-          <BigFloatShape color="#c74c1c" geometry="icosa" size={2.4} />
-        </Canvas>
+    <div className="bg-[#f4efe6] text-[#1a1a1a]">
 
-        {/* 噪点 */}
-        <div className="noise-overlay" />
+      {/* ===== 导航栏 ===== */}
+      <header className="fixed inset-x-0 top-0 z-50 flex items-center justify-between border-b border-[#1a1a1a]/10 bg-[#f4efe6]/95 px-6 py-5 backdrop-blur-sm md:px-14">
+        <Link to="/" className="font-serif text-xl text-[#1a1a1a] tracking-tight">
+          Junxi<span className="text-[#c74c1c]">.</span>
+        </Link>
+        <nav className="hidden items-center gap-10 text-[11px] uppercase tracking-[0.25em] text-[#1a1a1a]/50 md:flex">
+          <Link to="/" className="hover:text-[#c74c1c]">The Corridor</Link>
+          <Link to="/about" className="hover:text-[#c74c1c]">About Me</Link>
+          <Link to="/gallery" className="text-[#c74c1c]">Gallery</Link>
+          <Link to="/contact" className="hover:text-[#c74c1c]">Contact</Link>
+        </nav>
+        <span className="text-[11px] uppercase tracking-[0.25em] text-[#1a1a1a]/35">Portfolio · 2025</span>
+      </header>
 
-        {/* 页头信息 */}
-        <div className="absolute inset-x-0 top-0 z-10 mx-auto flex max-w-[1600px] items-start justify-between px-6 pt-10 text-[11px] uppercase tracking-[0.3em] text-bone/60 md:px-14">
-          <div className="flex items-center gap-3">
-            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-ember" />
-            <span>01 · Gallery</span>
-          </div>
-          <Link to="/" className="hover:text-ember">← 返回大厅</Link>
-        </div>
+      {/* ===== Gallery 大标题 ===== */}
+      <section className="mx-auto max-w-[1600px] px-6 pt-44 pb-16 md:px-14 md:pt-52 md:pb-20">
+        <p className="mb-6 text-[11px] uppercase tracking-[0.3em] text-[#1a1a1a]/40">
+          Gallery & Projects — 2021 to 2025
+        </p>
+        <h1 className="font-serif text-[clamp(3rem,11vw,10rem)] leading-[0.88] tracking-tight text-[#1a1a1a]">
+          六个
+          <br />
+          <span className="italic text-[#c74c1c]">值得看</span>
+          <br />
+          的作品。
+        </h1>
+        <div className="mt-16 border-t border-[#1a1a1a]/20" />
+      </section>
 
-        {/* 居中大标题 */}
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center">
-          <p className="text-xs uppercase tracking-[0.3em] text-bone/60">Selected Works · 2021 — 2025</p>
-          <h1 className="mt-6 font-serif text-[16vw] leading-[0.9] tracking-tight text-bone md:text-[11vw]">
-            作品 <span className="italic text-ember">厅</span>
-          </h1>
-          <p className="mt-8 max-w-xl text-bone/60">六个被选出来的项目 —— 它们被认真看待过, 现在也希望被认真看完。</p>
-        </div>
-
-        {/* 底部标识 */}
-        <div className="absolute inset-x-0 bottom-6 z-10 mx-auto flex max-w-[1600px] items-end justify-between px-6 text-[11px] uppercase tracking-[0.3em] text-bone/50 md:px-14">
-          <span>Scroll ↓</span>
-          <span>Junxi · Studio</span>
-          <span>06 projects</span>
-        </div>
-      </div>
-
-      {/* ============= 项目栅格 ============= */}
-      <section className="relative z-10 mx-auto max-w-[1600px] px-6 py-20 md:px-14">
-        <div className="mb-16 flex items-end justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-bone/60">Index · 目录</p>
-            <p className="mt-4 font-serif text-4xl text-bone md:text-6xl">
-              六个<span className="italic text-ember"> 作品。</span>
-            </p>
-          </div>
-          <a href="#scroll" className="hidden md:block text-sm text-bone/50 hover:text-ember">
-            向下 ↓
-          </a>
-        </div>
-
-        <div id="scroll" className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {projects.map((p, i) => (
-            <ProjectCard key={p.title} index={i + 1} {...p} />
+      {/* ===== 精选项目(长描述) ===== */}
+      <section className="mx-auto max-w-[1600px] px-6 pb-16 md:px-14">
+        <p className="mb-10 text-[11px] uppercase tracking-[0.3em] text-[#1a1a1a]/40">
+          Featured · 精选项目
+        </p>
+        <div className="space-y-12">
+          {long.map((p) => (
+            <article key={p.id} className="group border-t border-[#1a1a1a]/15 pt-10 pb-12">
+              <div className="grid gap-10 md:grid-cols-12">
+                {/* 左:缩略图 */}
+                <div className="md:col-span-5">
+                  <div
+                    className="aspect-[4/3] w-full overflow-hidden transition"
+                    style={{ backgroundColor: p.color }}
+                  >
+                    <div className="flex h-full w-full items-center justify-center">
+                      <span className="font-serif text-3xl text-[#f4efe6]/40">{p.title[0]}</span>
+                    </div>
+                  </div>
+                </div>
+                {/* 右:信息 */}
+                <div className="md:col-span-6 md:col-start-7">
+                  <div className="flex flex-wrap items-baseline gap-3 text-[11px] uppercase tracking-[0.25em] text-[#1a1a1a]/45 mb-6">
+                    <span>{p.year}</span>
+                    <span>·</span>
+                    <span>{p.category}</span>
+                  </div>
+                  <h2 className="font-serif text-4xl text-[#1a1a1a] md:text-5xl">{p.title}</h2>
+                  <p className="mt-6 text-base leading-relaxed text-[#1a1a1a]/70 md:text-lg">
+                    {p.description}
+                  </p>
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    {p.tags.map((t) => (
+                      <span key={t} className="border border-[#1a1a1a]/20 px-3 py-1 text-xs text-[#1a1a1a]/55">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                  <button className="mt-8 inline-flex items-center gap-2 border-b border-[#1a1a1a] pb-1 text-sm text-[#1a1a1a] hover:text-[#c74c1c] hover:border-[#c74c1c]">
+                    View project →
+                  </button>
+                </div>
+              </div>
+            </article>
           ))}
         </div>
-
-        {/* 底部引语 */}
-        <p className="mx-auto mt-24 max-w-3xl text-center font-serif text-2xl italic leading-snug text-bone/70 md:text-4xl">
-          “ 慢一点, 让图案有时间被看见。 ”
-        </p>
       </section>
 
-      {/* 底部 */}
-      <section className="relative z-10 mx-auto max-w-[1600px] px-6 pb-20 md:px-14">
-        <div className="border-t border-line pt-16 text-center">
-          <p className="font-serif text-5xl text-bone md:text-7xl">
-            Next — <Link to="/studio" className="italic text-ember hover:underline">Studio →</Link>
-          </p>
-          <p className="mt-4 text-sm text-bone/50">下一间:关于设计师本人的工作室。</p>
+      {/* ===== 其他项目(小卡片) ===== */}
+      <section className="mx-auto max-w-[1600px] px-6 pb-20 md:px-14">
+        <p className="mb-10 text-[11px] uppercase tracking-[0.3em] text-[#1a1a1a]/40">
+          More · 更多作品
+        </p>
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {short.map((p, i) => (
+            <article
+              key={p.id}
+              className="group border border-[#1a1a1a]/15 transition hover:border-[#1a1a1a]/40"
+            >
+              <div style={{ backgroundColor: p.color }} className="aspect-[4/3] flex items-center justify-center">
+                <span className="font-serif text-5xl text-[#f4efe6]/30">{p.title[0]}</span>
+              </div>
+              <div className="p-6">
+                <div className="flex items-baseline justify-between gap-3 text-[11px] uppercase tracking-[0.2em] text-[#1a1a1a]/45 mb-3">
+                  <span>{p.year}</span>
+                  <span>{p.category}</span>
+                </div>
+                <h3 className="font-serif text-2xl text-[#1a1a1a]">{p.title}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-[#1a1a1a]/60 line-clamp-2">
+                  {p.description}
+                </p>
+                <button className="mt-4 inline-flex items-center gap-1 text-xs text-[#1a1a1a]/50 hover:text-[#c74c1c]">
+                  open →
+                </button>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
+
+      {/* ===== 页脚 ===== */}
+      <footer className="border-t border-[#1a1a1a]/20 bg-[#1a1a1a]">
+        <div className="mx-auto max-w-[1600px] px-6 pb-12 pt-10 md:px-14">
+          <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+            <p className="font-serif text-3xl text-[#f4efe6] md:text-5xl">
+              Junxi<span className="text-[#c74c1c]">.</span>
+            </p>
+            <p className="text-[11px] uppercase tracking-[0.25em] text-[#f4efe6]/35">
+              © 2025 — Designed by Junxi · Built with code.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

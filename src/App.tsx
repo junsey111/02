@@ -4,9 +4,6 @@ import Home from '@/pages/Home';
 import Gallery from '@/pages/Gallery';
 import Studio from '@/pages/Studio';
 import Contact from '@/pages/Contact';
-import NavBar from '@/components/layout/NavBar';
-import Footer from '@/components/layout/Footer';
-import { CustomCursor, NoiseOverlay } from '@/components/shared/Reveal';
 
 function ScrollManager() {
   const { pathname, hash } = useLocation();
@@ -27,19 +24,14 @@ export default function App() {
   return (
     <Router>
       <ScrollManager />
-      <div className="bg-ink text-bone">
-        <NoiseOverlay />
-        <CustomCursor />
-        <NavBar />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/gallery" element={<Gallery />} />
-          <Route path="/studio" element={<Studio />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="*" element={<Home />} />
-        </Routes>
-        <Footer />
-      </div>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/gallery" element={<Gallery />} />
+        <Route path="/about" element={<Studio />} />
+        <Route path="/studio" element={<Studio />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="*" element={<Home />} />
+      </Routes>
     </Router>
   );
 }
