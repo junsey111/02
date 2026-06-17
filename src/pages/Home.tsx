@@ -5,14 +5,14 @@ import { Link } from 'react-router-dom';
 
 /* WebGL 检测 + 优雅降级 */
 function useHasWebGL() {
-  const [has, set] = (0, useState)(true);
-  (0, useEffect)(() => {
+  const [has, setHas] = useState(true);
+  useEffect(() => {
     try {
       const c = document.createElement('canvas');
       const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
-      if (!gl) set(false);
+      if (!gl) setHas(false);
     } catch {
-      set(false);
+      setHas(false);
     }
   }, []);
   return has;
@@ -153,6 +153,8 @@ function DoorMesh({ position, color, flip }: { position: [number, number, number
    主页面
    ============================================================ */
 export default function Home() {
+  const hasWebGL = useHasWebGL();
+
   /* 鼠标追踪 —— 同步到全局,供 CorridorInner 读取 */
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -235,14 +237,16 @@ export default function Home() {
         {/* 3D Canvas + DOM 门叠加 */}
         <div className="relative mx-auto max-w-[1600px] px-6 md:px-14">
           <div className="relative h-[130vh] overflow-hidden border border-[#1e1e2a]">
-            {/* WebGL 不可用时的降级 */}
-            <CanvasErrorBoundary>
+            {/* 3D Canvas — WebGL 不可用时不渲染 */}
+            {hasWebGL ? (
               <Canvas camera={{ position: [0, 2, 5], fov: 55, near: 0.1, far: 300 }} dpr={1} gl={{ antialias: true }}>
                 <ScrollControls pages={1} damping={0.25}>
                   <CorridorInner />
                 </ScrollControls>
               </Canvas>
-            </CanvasErrorBoundary>
+            ) : (
+              <div className="absolute inset-0 bg-[#0c0c12]" />
+            )}
 
             {/* DOM 门文字叠加 */}
             <div className="pointer-events-none absolute inset-0">
